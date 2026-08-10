@@ -1,0 +1,33 @@
+import {
+  AlertCircle,
+  Archive,
+  BarChart3,
+  Bike,
+  Bot,
+  Briefcase,
+  CreditCard,
+  History,
+  Link2,
+  Package,
+  Palette,
+  ShoppingCart,
+  UserCheck,
+  Users,
+} from 'lucide-react';
+
+export const sidebarMenuItems = [
+  { path: '/dashboard/pdv', label: 'PDV', icon: ShoppingCart },
+  { path: '/dashboard/clientes', label: 'Clientes', icon: Users },
+  { path: '/dashboard/pessoas/funcionarios', label: 'Funcionários', icon: UserCheck },
+  { path: '/dashboard/motoboys', label: 'Motoboys', icon: Bike },
+  { path: '/dashboard/produtos', label: 'Produtos', icon: Package },
+  { path: '/dashboard/estoque', label: 'Estoque', icon: Archive },
+  { path: '/dashboard/contas-pagar', label: 'Contas a Pagar', icon: AlertCircle },
+  { path: '/dashboard/contas-receber', label: 'Contas a Receber', icon: CreditCard },
+  { path: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart3 },
+  { path: '/dashboard/relatorios/historico-vendas', label: 'Histórico de Vendas', icon: History },
+  { path: '/dashboard/relatorios/caixa', label: 'Caixa', icon: Briefcase },
+  { path: '/dashboard/chatbot', label: 'CHATBOT', icon: Bot },
+  { path: '/dashboard/ifood-99', label: 'IFOOD & 99', icon: Link2 },
+  { path: '/dashboard/cores-layout', label: 'Mudar as cores do layout', icon: Palette },
+];
