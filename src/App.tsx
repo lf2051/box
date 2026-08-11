@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Activity, Bell, Check, ChevronRight, Clock3, Download, ExternalLink, FileBarChart2, Home, LogOut, Menu, Monitor, Moon, Pause, Pencil, Plus, QrCode, Search, Settings, SkipForward, Sun, Trash2, UserRound, Users, Volume2, X, Zap } from 'lucide-react'
 import { supabase, supabaseConfigured } from './lib/supabase'
 import { callNext as callNextRemote, createQueueEntry, loadStoreQueue, subscribeQueue, updateQueueEntry } from './services/queueService'
+import PublicEntrySupabase from './components/PublicEntrySupabase'
 
 type Status = 'waiting' | 'called' | 'attending' | 'completed' | 'skipped' | 'cancelled'
 type Page = 'dashboard' | 'queue' | 'motoboys' | 'history' | 'reports' | 'qrcode' | 'settings' | 'tv'
@@ -25,7 +26,7 @@ function saveFile(text: string, name: string) { const a = document.createElement
 
 export default function App() {
   const publicStore = window.location.pathname.match(/^\/entrar\/([^/]+)/)?.[1]
-  if (publicStore) { const hasPublicSession = Boolean(localStorage.getItem(`qr-queue-public-${publicStore}`)); return hasPublicSession ? <RealtimePublicEntry storeSlug={publicStore} /> : <PublicEntry storeSlug={publicStore} /> }
+  if (publicStore) { const publicCode = new URLSearchParams(window.location.search).get('code'); if (publicCode) localStorage.setItem('qr-queue-code', publicCode); return <PublicEntrySupabase storeSlug={publicStore} /> }
   const [logged, setLogged] = useState(() => localStorage.getItem('qr-queue-auth') === '1')
   const [page, setPage] = useState<Page>('dashboard')
   const [motos, setMotos] = useState<Moto[]>(() => JSON.parse(localStorage.getItem('qr-queue-motos') || 'null') || seedMotos)
@@ -79,7 +80,7 @@ function RealtimePublicEntry({ storeSlug }: { storeSlug: string }) {
   const previous = useRef('')
   const refresh = async () => {
     let entries: Entry[] = JSON.parse(localStorage.getItem('qr-queue-entries') || '[]')
-    if (supabaseConfigured && import.meta.env.VITE_STORE_ID) { try { const remote = await loadStoreQueue(import.meta.env.VITE_STORE_ID as string); entries = remote.entries as Entry[] } catch { /* mantém a última leitura enquanto reconecta */ } }
+    if (supabaseConfigured && supabase) { try { const remote = await supabase.rpc('get_public_queue', { p_store_slug: storeSlug, p_code: code }); if (!remote.error && remote.data) entries = (remote.data as Array<{ entry_id: string; motoboy_id: string; position: number; status: Status; entered_at: string; called_at?: string }>).map(row => ({ id: row.entry_id, motoId: row.motoboy_id, position: row.position, status: row.status, enteredAt: row.entered_at, calledAt: row.called_at })) } catch { /* mantém a última leitura enquanto reconecta */ } }
     setQueue(entries)
     const active = entries.filter(entry => ['waiting', 'called', 'attending'].includes(entry.status)).sort((a, b) => a.position - b.position)
     const current = active.find(entry => entry.id === saved?.entryId)
@@ -95,8 +96,8 @@ function RealtimePublicEntry({ storeSlug }: { storeSlug: string }) {
     }
     previous.current = state
   }
-  useEffect(() => { if (!authenticated) return; void refresh(); const timer = window.setInterval(() => { void refresh() }, 1000); const unsubscribe = supabaseConfigured && import.meta.env.VITE_STORE_ID ? subscribeQueue(import.meta.env.VITE_STORE_ID as string, () => { void refresh() }) : () => undefined; return () => { window.clearInterval(timer); unsubscribe() } }, [authenticated])
-  if (!saved?.entryId || !authenticated) return <div className="public-entry"><div className="public-card"><div className="brand centered"><span className="brand-mark">▰</span><div><b>Box Fila</b><small>Fila inteligente</small></div></div><div className="eyebrow">AUTENTICAÇÃO DO MOTOBOY</div><h1>Confirme seu acesso</h1><p>Informe o código de 4 dígitos exibido na aba QR Code.</p><label>Código temporário<input inputMode="numeric" maxLength={4} value={code} onChange={event => setCode(event.target.value.replace(/\D/g, ''))} placeholder="0000" /></label><button className="primary full" onClick={() => { if (code === localStorage.getItem('qr-queue-code')) setAuthenticated(true); else setNotice('Código expirado. Informe o código atual.') }}>Acessar minha fila</button>{notice && <div className="notification-window">{notice}</div>}</div></div>
+  useEffect(() => { if (!authenticated) return; void refresh(); const timer = window.setInterval(() => { void refresh() }, 1000); return () => window.clearInterval(timer) }, [authenticated])
+  if (!saved?.entryId || !authenticated) return <div className="public-entry"><div className="public-card"><div className="brand centered"><span className="brand-mark">▰</span><div><b>Box Fila</b><small>Fila inteligente</small></div></div><div className="eyebrow">AUTENTICAÇÃO DO MOTOBOY</div><h1>Confirme seu acesso</h1><p>Informe o código de 4 dígitos exibido na aba QR Code.</p><label>Código temporário<input inputMode="numeric" maxLength={4} value={code} onChange={event => setCode(event.target.value.replace(/\D/g, ''))} placeholder="0000" /></label><button className="primary full" onClick={() => { if (code === new URLSearchParams(window.location.search).get('code') || code === localStorage.getItem('qr-queue-code')) setAuthenticated(true); else setNotice('Código expirado. Informe o código atual.') }}>Acessar minha fila</button>{notice && <div className="notification-window">{notice}</div>}</div></div>
   const motoIdsAhead = queue.filter(entry => entry.id !== saved.entryId && entry.status === 'waiting' && entry.position < position).sort((a, b) => a.position - b.position).slice(0, 10)
   const motos: Moto[] = JSON.parse(localStorage.getItem('qr-queue-motos') || '[]')
   return <div className="public-entry"><div className="public-card"><div className="brand centered"><span className="brand-mark">▰</span><div><b>Box Fila</b><small>Fila inteligente</small></div></div>{notice && <div className="notification-window"><Bell size={17} /><span>{notice}</span><button onClick={() => setNotice('')}><X size={14} /></button></div>}<div className="eyebrow">ZÉ BARREIRO</div><h1>Você está na fila</h1><div className="public-position"><small>SUA POSIÇÃO</small><strong>{position}º</strong><span>{motoIdsAhead.length ? `${motoIdsAhead.length} pessoa(s) antes de você` : 'Você é o próximo da fila'}</span></div><section className="ahead-list"><h2>FILA À SUA FRENTE</h2>{motoIdsAhead.length ? motoIdsAhead.map((entry, index) => <div className="ahead-row" key={entry.id}><b>{index + 1}º</b><span>{motos.find(moto => moto.id === entry.motoId)?.name || 'Motoboy'}</span></div>) : <p>Nenhuma pessoa antes de você.</p>}</section><p className="muted">A fila é atualizada automaticamente nesta janela.</p></div></div>
