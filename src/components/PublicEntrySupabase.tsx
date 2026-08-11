@@ -40,8 +40,9 @@ export default function PublicEntrySupabase({ storeSlug }: { storeSlug: string }
   const current = rows.find(row => row.entry_id === entryId)
   const ahead = useMemo(() => rows.filter(row => row.status === 'waiting' && row.queue_position < (current?.queue_position || savedPosition)).slice(0, 10), [rows, current?.queue_position, savedPosition])
   const submit = async () => {
+    if (!/^\d{4}$/.test(code)) { setNotice('Informe os 4 dígitos do código exibido no painel.'); return }
     const acceptedCode = urlCode || localStorage.getItem('qr-queue-code') || ''
-    if (!code || code !== acceptedCode) { setNotice('Código expirado. Escaneie o QR Code novamente.'); return }
+    if (!supabaseConfigured && code !== acceptedCode) { setNotice('Código expirado. Escaneie o QR Code novamente.'); return }
     if (entryId) { setEntered(true); setNotice('Acesso confirmado.'); return }
     if (!name.trim() || !phone.trim()) { setNotice('Preencha nome e telefone.'); return }
     setLoading(true)
