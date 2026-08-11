@@ -47,7 +47,7 @@ export default function PublicEntrySupabase({ storeSlug }: { storeSlug: string }
     setLoading(true)
     if (supabaseConfigured && supabase) {
       try {
-        const { data, error } = await supabase.rpc('join_queue', { p_store_slug: storeSlug, p_name: name.trim(), p_phone: phone.trim() })
+        const { data, error } = await supabase.rpc('join_public_queue', { p_store_slug: storeSlug, p_name: name.trim(), p_phone: phone.trim(), p_code: code })
         if (error || !data) { setNotice(error?.message.includes('ALREADY_IN_QUEUE') ? 'Este telefone já está na fila.' : `Não foi possível entrar: ${error?.message || 'erro no Supabase'}`); return }
       const result = data as { entry_id: string; position: number }
       localStorage.setItem(storageKey, JSON.stringify({ name, phone, entryId: result.entry_id, position: result.position }))
