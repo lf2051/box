@@ -29,18 +29,18 @@ export default function App() {
   if (publicStore) { const publicCode = new URLSearchParams(window.location.search).get('code'); if (publicCode) localStorage.setItem('qr-queue-code', publicCode); return <PublicEntrySupabase storeSlug={publicStore} /> }
   const [logged, setLogged] = useState(() => localStorage.getItem('qr-queue-auth') === '1')
   const [page, setPage] = useState<Page>('dashboard')
-  const [motos, setMotos] = useState<Moto[]>(() => JSON.parse(localStorage.getItem('qr-queue-motos') || 'null') || seedMotos)
-  const [entries, setEntries] = useState<Entry[]>(() => JSON.parse(localStorage.getItem('qr-queue-entries') || 'null') || seedEntries)
+  const [motos, setMotos] = useState<Moto[]>(() => supabaseConfigured ? [] : JSON.parse(localStorage.getItem('qr-queue-motos') || 'null') || seedMotos)
+  const [entries, setEntries] = useState<Entry[]>(() => supabaseConfigured ? [] : JSON.parse(localStorage.getItem('qr-queue-entries') || 'null') || seedEntries)
   const [accent, setAccent] = useState(() => { try { return JSON.parse(localStorage.getItem('qr-queue-settings') || '{}').accent || '#FFC107' } catch { return '#FFC107' } })
   const [dark, setDark] = useState(true)
   const [toast, setToast] = useState('')
   const [mobile, setMobile] = useState(false)
   const [authChecking, setAuthChecking] = useState(supabaseConfigured)
   const storeId = import.meta.env.VITE_STORE_ID as string | undefined
-  useEffect(() => localStorage.setItem('qr-queue-motos', JSON.stringify(motos)), [motos])
-  useEffect(() => localStorage.setItem('qr-queue-entries', JSON.stringify(entries)), [entries])
+  useEffect(() => { if (!supabaseConfigured) localStorage.setItem('qr-queue-motos', JSON.stringify(motos)) }, [motos])
+  useEffect(() => { if (!supabaseConfigured) localStorage.setItem('qr-queue-entries', JSON.stringify(entries)) }, [entries])
   useEffect(() => { if (!supabase) { setAuthChecking(false); return }; let mounted = true; void supabase.auth.getSession().then(({ data, error }) => { if (!mounted) return; if (error) console.error('Falha ao validar sessão:', error); setLogged(Boolean(data.session)); setAuthChecking(false) }).catch(error => { if (!mounted) return; console.error('Falha ao conectar ao Supabase:', error); setAuthChecking(false) }); const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => { if (mounted) { setLogged(Boolean(session)); setAuthChecking(false) } }); return () => { mounted = false; listener.subscription.unsubscribe() } }, [])
-  useEffect(() => { if (!supabaseConfigured || !storeId) return; let active = true; const reload = () => loadStoreQueue(storeId).then(data => { if (!active) return; setEntries(data.entries as Entry[]); setMotos(data.motos as Moto[]) }).catch(error => console.error('Falha ao sincronizar fila:', error)); reload(); const unsubscribe = subscribeQueue(storeId, reload); return () => { active = false; unsubscribe() } }, [storeId])
+  useEffect(() => { if (!supabaseConfigured || !storeId) return; let active = true; const reload = () => loadStoreQueue(storeId).then(data => { if (!active) return; setEntries(data.entries as Entry[]); setMotos(data.motos as Moto[]) }).catch(error => { console.error('Falha ao sincronizar fila:', error); if (active) setToast('Não foi possível sincronizar com o Supabase.') }); reload(); const unsubscribe = subscribeQueue(storeId, reload); return () => { active = false; unsubscribe() } }, [storeId])
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2600) }
   const activeEntries = entries.filter(e => ['waiting', 'called', 'attending'].includes(e.status)).sort((a, b) => a.position - b.position)
   const current = activeEntries.find(e => e.status === 'called' || e.status === 'attending')
