@@ -19,6 +19,7 @@ const seedEntries: Entry[] = [{ id: 'e1', motoId: 'm1', status: 'waiting', posit
 const labels: Record<Status, string> = { waiting: 'Aguardando', called: 'Chamado', attending: 'Em atendimento', completed: 'Concluído', skipped: 'Pulado', cancelled: 'Cancelado' }
 const nav: Array<[Page, string, typeof Home]> = [['dashboard', 'Dashboard', Home], ['queue', 'Fila', Users], ['motoboys', 'Motoboys', UserRound], ['history', 'Histórico', Clock3], ['reports', 'Relatórios', FileBarChart2], ['qrcode', 'QR Code', QrCode], ['tv', 'TV', Monitor], ['settings', 'Config.', Settings]]
 const apiReady = Boolean(supabase)
+function readLocalArray<T>(key: string, fallback: T[]) { try { const parsed: unknown = JSON.parse(localStorage.getItem(key) || 'null'); return Array.isArray(parsed) ? parsed as T[] : fallback } catch { return fallback } }
 
 function formatWait(iso: string) { return `${Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))} min` }
 function speak(name: string) { if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(`${name}, favor retirar o pedido.`)) } }
@@ -29,8 +30,8 @@ export default function App() {
   if (publicStore) { const publicCode = new URLSearchParams(window.location.search).get('code'); if (publicCode) localStorage.setItem('qr-queue-code', publicCode); return <PublicEntrySupabase storeSlug={publicStore} /> }
   const [logged, setLogged] = useState(() => localStorage.getItem('qr-queue-auth') === '1')
   const [page, setPage] = useState<Page>('dashboard')
-  const [motos, setMotos] = useState<Moto[]>(() => supabaseConfigured ? [] : JSON.parse(localStorage.getItem('qr-queue-motos') || 'null') || seedMotos)
-  const [entries, setEntries] = useState<Entry[]>(() => supabaseConfigured ? [] : JSON.parse(localStorage.getItem('qr-queue-entries') || 'null') || seedEntries)
+  const [motos, setMotos] = useState<Moto[]>(() => supabaseConfigured ? [] : readLocalArray('qr-queue-motos', seedMotos))
+  const [entries, setEntries] = useState<Entry[]>(() => supabaseConfigured ? [] : readLocalArray('qr-queue-entries', seedEntries))
   const [accent, setAccent] = useState(() => { try { return JSON.parse(localStorage.getItem('qr-queue-settings') || '{}').accent || '#FFC107' } catch { return '#FFC107' } })
   const [dark, setDark] = useState(true)
   const [toast, setToast] = useState('')
