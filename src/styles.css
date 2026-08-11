@@ -6,6 +6,6 @@
  .ahead-list{margin:18px 0;background:#111;border:1px solid #303030;border-radius:7px;padding:14px;text-align:left}.ahead-list h2{font-size:10px;color:var(--accent);letter-spacing:.05em;margin:0 0 8px}.ahead-row{display:flex;gap:12px;border-top:1px solid #292929;padding:9px 2px;font-size:12px}.ahead-row b{color:var(--accent)}.ahead-list p{font-size:11px;color:#999;margin:10px 0 2px}
  .ahead-list .ahead-row:nth-of-type(n+11){display:none}
  .login-card .primary{background:#ffc107!important;color:#111!important;opacity:1!important}.login-card .primary:disabled{background:#ffc107!important;color:#111!important;opacity:.75!important;cursor:not-allowed}
- .qr-camera { display: grid; gap: 10px; margin: 12px 0; }
+ .qr-layout{grid-template-columns:minmax(320px,520px)}.qr-card img{width:min(360px,100%);padding:14px}.qr-camera { display: grid; gap: 10px; margin: 12px 0; }
  .qr-video { display: none; width: 100%; max-height: 240px; object-fit: cover; border: 1px solid var(--border); border-radius: 10px; background: #000; }
  .qr-video.active { display: block; }
