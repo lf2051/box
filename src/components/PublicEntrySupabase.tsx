@@ -14,6 +14,9 @@ export default function PublicEntrySupabase({ storeSlug }: { storeSlug: string }
   const [rows, setRows] = useState<Row[]>([])
   const [notice, setNotice] = useState('')
   const [entered, setEntered] = useState(Boolean(saved?.entryId))
+  const [entryId, setEntryId] = useState(saved?.entryId || '')
+  const [savedPosition, setSavedPosition] = useState(saved?.position || 0)
+  const [loading, setLoading] = useState(false)
   const previous = useRef('')
 
   const beep = () => { try { const context = new AudioContext(); const oscillator = context.createOscillator(); oscillator.connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + .25) } catch { /* o navegador pode exigir uma interação */ } }
@@ -23,7 +26,7 @@ export default function PublicEntrySupabase({ storeSlug }: { storeSlug: string }
     if (error || !data) return
     const next = data as Row[]
     setRows(next)
-    const current = next.find(row => row.entry_id === saved?.entryId)
+    const current = next.find(row => row.entry_id === entryId)
     if (!current) return
     const state = `${current.status}:${current.queue_position}`
     if (previous.current && previous.current !== state) {
@@ -32,26 +35,32 @@ export default function PublicEntrySupabase({ storeSlug }: { storeSlug: string }
     }
     previous.current = state
   }
-  useEffect(() => { if (!entered) return; void refresh(); const timer = window.setInterval(() => void refresh(), 1500); return () => window.clearInterval(timer) }, [entered, code])
+  useEffect(() => { if (!entered) return; void refresh(); const timer = window.setInterval(() => void refresh(), 1500); return () => window.clearInterval(timer) }, [entered, code, entryId])
 
-  const current = rows.find(row => row.entry_id === saved?.entryId)
-  const ahead = useMemo(() => rows.filter(row => row.status === 'waiting' && row.queue_position < (current?.queue_position || saved?.position || 0)).slice(0, 10), [rows, current?.queue_position, saved?.position])
+  const current = rows.find(row => row.entry_id === entryId)
+  const ahead = useMemo(() => rows.filter(row => row.status === 'waiting' && row.queue_position < (current?.queue_position || savedPosition)).slice(0, 10), [rows, current?.queue_position, savedPosition])
   const submit = async () => {
     const acceptedCode = urlCode || localStorage.getItem('qr-queue-code') || ''
     if (!code || code !== acceptedCode) { setNotice('Código expirado. Escaneie o QR Code novamente.'); return }
-    if (saved?.entryId) { setEntered(true); setNotice('Acesso confirmado.'); return }
+    if (entryId) { setEntered(true); setNotice('Acesso confirmado.'); return }
     if (!name.trim() || !phone.trim()) { setNotice('Preencha nome e telefone.'); return }
+    setLoading(true)
     if (supabaseConfigured && supabase) {
-      const { data, error } = await supabase.rpc('join_queue', { p_store_slug: storeSlug, p_name: name.trim(), p_phone: phone.trim() })
-      if (error || !data) { setNotice(error?.message.includes('ALREADY_IN_QUEUE') ? 'Este telefone já está na fila.' : `Não foi possível entrar: ${error?.message || 'erro no Supabase'}`); return }
+      try {
+        const { data, error } = await supabase.rpc('join_queue', { p_store_slug: storeSlug, p_name: name.trim(), p_phone: phone.trim() })
+        if (error || !data) { setNotice(error?.message.includes('ALREADY_IN_QUEUE') ? 'Este telefone já está na fila.' : `Não foi possível entrar: ${error?.message || 'erro no Supabase'}`); return }
       const result = data as { entry_id: string; position: number }
       localStorage.setItem(storageKey, JSON.stringify({ name, phone, entryId: result.entry_id, position: result.position }))
-      setEntered(true); setNotice('Você entrou na fila com sucesso.'); beep(); return
+        setEntryId(result.entry_id); setSavedPosition(result.position); setEntered(true); setNotice('Você entrou na fila com sucesso.'); beep(); return
+      } catch {
+        setNotice('Falha de conexão ao entrar na fila. Tente novamente.')
+        return
+      } finally { setLoading(false) }
     }
-    setNotice('Supabase não configurado neste endereço.');
+    setLoading(false); setNotice('Supabase não configurado neste endereço.');
   }
 
-  if (!entered) return <div className="public-entry"><div className="public-card"><div className="brand centered"><span className="brand-mark">▰</span><div><b>Box Fila</b><small>Fila inteligente</small></div></div><div className="eyebrow">ENTRADA NA FILA</div><h1>Entre na fila</h1><p>Informe seus dados e o código exibido no balcão.</p><label>Nome completo<input value={name} onChange={event => setName(event.target.value)} placeholder="Seu nome" /></label><label>Telefone<input value={phone} onChange={event => setPhone(event.target.value)} placeholder="(31) 99999-9999" /></label><label>Código de autenticação<input inputMode="numeric" maxLength={4} value={code} onChange={event => setCode(event.target.value.replace(/\D/g, ''))} placeholder="4 dígitos" /></label><button className="primary full" onClick={() => void submit()}>Entrar na fila <ChevronRight size={16} /></button>{notice && <div className="notification-window">{notice}</div>}</div></div>
-  const position = current?.queue_position || saved?.position || 0
+  if (!entered) return <div className="public-entry"><div className="public-card"><div className="brand centered"><span className="brand-mark">▰</span><div><b>Box Fila</b><small>Fila inteligente</small></div></div><div className="eyebrow">ENTRADA NA FILA</div><h1>Entre na fila</h1><p>Informe seus dados e o código exibido no balcão.</p><label>Nome completo<input value={name} onChange={event => setName(event.target.value)} placeholder="Seu nome" /></label><label>Telefone<input value={phone} onChange={event => setPhone(event.target.value)} placeholder="(31) 99999-9999" /></label><label>Código de autenticação<input inputMode="numeric" maxLength={4} value={code} onChange={event => setCode(event.target.value.replace(/\D/g, ''))} placeholder="4 dígitos" /></label><button className="primary full" onClick={() => void submit()} disabled={loading}>{loading ? 'Entrando...' : <>Entrar na fila <ChevronRight size={16} /></>}</button>{notice && <div className="notification-window">{notice}</div>}</div></div>
+  const position = current?.queue_position || savedPosition || 0
   return <div className="public-entry"><div className="public-card"><div className="brand centered"><span className="brand-mark">▰</span><div><b>Box Fila</b><small>Fila inteligente</small></div></div>{notice && <div className="notification-window"><Bell size={17} /><span>{notice}</span><button onClick={() => setNotice('')}><X size={14} /></button></div>}<div className="eyebrow">ZÉ BARREIRO</div><h1>Você está na fila</h1><div className="public-position"><small>SUA POSIÇÃO</small><strong>{position}º</strong><span>{ahead.length ? `${ahead.length} pessoa(s) antes de você` : 'Você é o próximo da fila'}</span></div><section className="ahead-list"><h2>FILA À SUA FRENTE</h2>{ahead.length ? ahead.map((row, index) => <div className="ahead-row" key={row.entry_id}><b>{index + 1}º</b><span>{row.name}</span></div>) : <p>Nenhuma pessoa antes de você.</p>}</section><p className="muted">A fila é atualizada automaticamente nesta janela.</p></div></div>
 }
