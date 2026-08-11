@@ -18,7 +18,7 @@ const seedMotos: Moto[] = [
 const seedEntries: Entry[] = [{ id: 'e1', motoId: 'm1', status: 'waiting', position: 1, enteredAt: new Date(Date.now() - 18 * 60000).toISOString() }]
 const labels: Record<Status, string> = { waiting: 'Aguardando', called: 'Chamado', attending: 'Em atendimento', completed: 'Concluído', skipped: 'Pulado', cancelled: 'Cancelado' }
 const nav: Array<[Page, string, typeof Home]> = [['dashboard', 'Dashboard', Home], ['queue', 'Fila', Users], ['motoboys', 'Motoboys', UserRound], ['history', 'Histórico', Clock3], ['reports', 'Relatórios', FileBarChart2], ['qrcode', 'QR Code', QrCode], ['tv', 'TV', Monitor], ['settings', 'Config.', Settings]]
-const apiReady = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
+const apiReady = Boolean(supabase)
 
 function formatWait(iso: string) { return `${Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))} min` }
 function speak(name: string) { if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(`${name}, favor retirar o pedido.`)) } }
