@@ -1,6 +1,6 @@
 -- Leitura da fila pelo aplicativo público do motoboy.
 create or replace function public.get_public_queue(p_store_slug text, p_code text)
-returns table (entry_id uuid, motoboy_id uuid, name text, phone text, position integer, status text, entered_at timestamptz, called_at timestamptz)
+returns table (entry_id uuid, motoboy_id uuid, name text, phone text, queue_position integer, status text, entered_at timestamptz, called_at timestamptz)
 language plpgsql security definer set search_path = public
 as $$
 declare v_store_id uuid;
